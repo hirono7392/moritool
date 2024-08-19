@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アニメーションPDF結合システム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+        }
+        .pdf-cards {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .pdf-card {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #ff4500;
+            width: 80px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 10px;
+            border-radius: 5px;
+        }
+        .system-text {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .roll-in-left {
+            animation: roll-in-left 0.6s ease-out both;
+        }
+        .roll-in-bottom {
+            animation: roll-in-bottom 0.6s ease-out both;
+        }
+        .roll-in-right {
+            animation: roll-in-right 0.6s ease-out both;
+        }
+        .tracking-in-contract-bck {
+            animation: tracking-in-contract-bck 1s cubic-bezier(0.215, 0.610, 0.355, 1.000) both;
+        }
+        @keyframes roll-in-left {
+            0% {
+                transform: translateX(-800px) rotate(-540deg);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        @keyframes roll-in-bottom {
+            0% {
+                transform: translateY(800px) rotate(540deg);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        @keyframes roll-in-right {
+            0% {
+                transform: translateX(800px) rotate(540deg);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        @keyframes tracking-in-contract-bck {
+            0% {
+                letter-spacing: 1em;
+                transform: translateZ(400px);
+                opacity: 0;
+            }
+            40% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateZ(0);
+                opacity: 1;
+            }
+        }
+        #fileInput {
+            display: none;
+        }
+        .custom-file-upload {
+            display: inline-block;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .custom-file-upload:hover {
+            background-color: #45a049;
+        }
+        #fileList {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .file-item {
+            width: 150px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: move;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .file-item:hover {
+            background-color: #f9f9f9;
+        }
+        .file-thumbnail {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            margin-bottom: 10px;
+        }
+        .file-name {
+            font-size: 12px;
+            word-break: break-all;
+        }
+        #progressBar {
+            width: 100%;
+            background-color: #ddd;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        #progressBar > div {
+            width: 0%;
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+        #mergeButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #mergeButton:hover {
+            background-color: #007B9A;
+        }
+        #mergeButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="pdf-cards">
+            <div class="pdf-card roll-in-left">P</div>
+            <div class="pdf-card roll-in-bottom">D</div>
+            <div class="pdf-card roll-in-right">F</div>
+        </div>
+        <div class="system-text tracking-in-contract-bck">結合システム</div>
+        
+        <label for="fileInput" class="custom-file-upload">
+            PDFファイルを選択
+        </label>
+        <input type="file" id="fileInput" accept=".pdf" multiple>
+        
+        <div id="fileList"></div>
+        
+        <div id="progressBar"><div></div></div>
+        
+        <button id="mergeButton" disabled>PDFを結合</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
+
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const progressBar = document.getElementById('progressBar').firstElementChild;
+        const mergeButton = document.getElementById('mergeButton');
+        let selectedFiles = [];
+
+        fileInput.addEventListener('change', async (event) => {
+            selectedFiles = Array.from(event.target.files);
+            await updateFileList();
+            updateMergeButton();
+        });
+
+        async function updateFileList() {
+            fileList.innerHTML = '';
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.dataset.index = i;
+
+                const thumbnail = document.createElement('img');
+                thumbnail.className = 'file-thumbnail';
+                thumbnail.src = await generatePDFThumbnail(file);
+
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+
+                fileItem.appendChild(thumbnail);
+                fileItem.appendChild(fileName);
+                fileList.appendChild(fileItem);
+            }
+
+            // ドラッグ＆ドロップの設定
+            new Sortable(fileList, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function(evt) {
+                    const newIndex = evt.newIndex;
+                    const oldIndex = evt.oldIndex;
+                    const movedFile = selectedFiles[oldIndex];
+                    selectedFiles.splice(oldIndex, 1);
+                    selectedFiles.splice(newIndex, 0, movedFile);
+                }
+            });
+        }
+
+        async function generatePDFThumbnail(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            const page = await pdf.getPage(1);
+            const scale = 1.5;
+            const viewport = page.getViewport({scale: scale});
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            await page.render({canvasContext: context, viewport: viewport}).promise;
+            return canvas.toDataURL();
+        }
+
+        function updateMergeButton() {
+            mergeButton.disabled = selectedFiles.length < 2;
+        }
+
+        mergeButton.addEventListener('click', async () => {
+            if (selectedFiles.length < 2) return;
+
+            const pdfDoc = await PDFLib.PDFDocument.create();
+            let totalPages = 0;
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
+                const copiedPages = await pdfDoc.copyPages(pdf, pdf.getPageIndices());
+                copiedPages.forEach((page) => pdfDoc.addPage(page));
+
+                totalPages += pdf.getPageCount();
+                progressBar.style.width = `${((i + 1) / selectedFiles.length) * 100}%`;
+            }
+
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'merged.pdf';
+            link.click();
+
+            alert('PDFの結合が完了しました！ダウンロードを開始します。');
+            resetUI();
+        });
+
+        function resetUI() {
+            fileInput.value = '';
+            fileList.innerHTML = '';
+            progressBar.style.width = '0%';
+            selectedFiles = [];
+            updateMergeButton();
+        }
+    </script>
+</body>
+</html>
